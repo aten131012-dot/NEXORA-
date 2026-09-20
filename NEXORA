@@ -1,0 +1,575 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+
+local player = Players.LocalPlayer or Players:GetPlayers()[1]
+
+-- 1. ค้นหาตำแหน่ง Parent ที่ปลอดภัยที่สุด
+local parentGui = nil
+
+if gethui then
+    pcall(function() parentGui = gethui() end)
+end
+
+if not parentGui then
+    pcall(function() 
+        local core = game:GetService("CoreGui")
+        if core then parentGui = core end
+    end)
+end
+
+if not parentGui then
+    pcall(function()
+        parentGui = player:FindFirstChildOfClass("PlayerGui") or player:WaitForChild("PlayerGui", 5)
+    end)
+end
+
+-- แจ้งเตือนการรันสคริปต์
+pcall(function()
+    StarterGui:SetCore("SendNotification", {
+        Title = "NEXORA HUB",
+        Text = "เพิ่มปุ่มล็อกหัวค่ายNEXORA ในหน้า ESP เรียบร้อย! ✨🚀",
+        Duration = 3
+    })
+end)
+
+-- ลบ UI เก่าป้องกันการซ้อนทับ
+if parentGui then
+    local oldUI = parentGui:FindFirstChild("NexoraHubUI")
+    if oldUI then oldUI:Destroy() end
+end
+
+-- 2. สร้าง ScreenGui หลัก
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "NexoraHubUI"
+screenGui.ResetOnSpawn = false
+screenGui.DisplayOrder = 999999
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = parentGui or player:WaitForChild("PlayerGui")
+
+-- ปุ่มเปิด/ปิด UI (Floating Button)
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 50, 0, 50)
+toggleButton.Position = UDim2.new(0, 20, 0, 100)
+toggleButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+toggleButton.Text = ""
+toggleButton.AutoButtonColor = true
+toggleButton.Parent = screenGui
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 12)
+btnCorner.Parent = toggleButton
+
+local btnStroke = Instance.new("UIStroke")
+btnStroke.Color = Color3.fromRGB(255, 50, 50)
+btnStroke.Thickness = 2
+btnStroke.Parent = toggleButton
+
+local logoImage = Instance.new("ImageLabel")
+logoImage.Size = UDim2.new(1, -6, 1, -6)
+logoImage.Position = UDim2.new(0, 3, 0, 3)
+logoImage.BackgroundTransparency = 1
+logoImage.Image = "rbxassetid://79440636550003"
+logoImage.ScaleType = Enum.ScaleType.Fit
+logoImage.Active = false
+logoImage.Parent = toggleButton
+
+local imgCorner = Instance.new("UICorner")
+imgCorner.CornerRadius = UDim.new(0, 10)
+imgCorner.Parent = logoImage
+
+-- หน้าต่างหลัก (Main Window)
+local mainWindow = Instance.new("Frame")
+mainWindow.Name = "MainWindow"
+mainWindow.Size = UDim2.new(0, 540, 0, 350)
+mainWindow.Position = UDim2.new(0.5, -270, 0.5, -175)
+mainWindow.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
+mainWindow.Visible = true
+mainWindow.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 12)
+mainCorner.Parent = mainWindow
+
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = Color3.fromRGB(255, 50, 50)
+mainStroke.Thickness = 1.5
+mainStroke.Parent = mainWindow
+
+-- แถบด้านบนสำหรับลาก (Top Bar)
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 35)
+topBar.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
+topBar.BorderSizePixel = 0
+topBar.Parent = mainWindow
+
+local topCorner = Instance.new("UICorner")
+topCorner.CornerRadius = UDim.new(0, 12)
+topCorner.Parent = topBar
+
+local titleText = Instance.new("TextLabel")
+titleText.Size = UDim2.new(1, -50, 1, 0)
+titleText.Position = UDim2.new(0, 15, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "NEXORA HUB | RED & BLUE EDITION"
+titleText.TextColor3 = Color3.fromRGB(0, 170, 255)
+titleText.TextSize = 13
+titleText.Font = Enum.Font.GothamBold
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Parent = topBar
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 25, 0, 25)
+closeBtn.Position = UDim2.new(1, -32, 0.5, -12)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextSize = 12
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Parent = topBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeBtn
+
+closeBtn.Activated:Connect(function()
+    mainWindow.Visible = false
+end)
+
+-- ระบบลากหน้าต่าง
+local dragging, dragInput, dragStart, startPos
+topBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainWindow.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+topBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        mainWindow.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- แถบซ้ายมือ (Sidebar)
+local sidebar = Instance.new("Frame")
+sidebar.Size = UDim2.new(0, 170, 1, -45)
+sidebar.Position = UDim2.new(0, 8, 0, 40)
+sidebar.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+sidebar.Parent = mainWindow
+
+local sideCorner = Instance.new("UICorner")
+sideCorner.CornerRadius = UDim.new(0, 10)
+sideCorner.Parent = sidebar
+
+local profileBox = Instance.new("Frame")
+profileBox.Size = UDim2.new(1, -12, 0, 65)
+profileBox.Position = UDim2.new(0, 6, 0, 6)
+profileBox.BackgroundColor3 = Color3.fromRGB(28, 35, 48)
+profileBox.Parent = sidebar
+
+local pbCorner = Instance.new("UICorner")
+pbCorner.CornerRadius = UDim.new(0, 8)
+pbCorner.Parent = profileBox
+
+local avatarImage = Instance.new("ImageLabel")
+avatarImage.Size = UDim2.new(0, 45, 0, 45)
+avatarImage.Position = UDim2.new(0, 6, 0.5, -22)
+avatarImage.BackgroundColor3 = Color3.fromRGB(20, 24, 33)
+avatarImage.Parent = profileBox
+
+local avatarCorner = Instance.new("UICorner")
+avatarCorner.CornerRadius = UDim.new(0, 8)
+avatarCorner.Parent = avatarImage
+
+-- ดึงรูปโปรไฟล์แบบแยก Thread
+task.spawn(function()
+    pcall(function()
+        local content = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+        avatarImage.Image = content
+    end)
+end)
+
+local nameLabel = Instance.new("TextLabel")
+nameLabel.Size = UDim2.new(1, -58, 0, 18)
+nameLabel.Position = UDim2.new(0, 56, 0, 10)
+nameLabel.BackgroundTransparency = 1
+nameLabel.Text = player.Name
+nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+nameLabel.TextSize = 11
+nameLabel.Font = Enum.Font.GothamBold
+nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+nameLabel.Parent = profileBox
+
+local statusSide = Instance.new("TextLabel")
+statusSide.Size = UDim2.new(1, -58, 0, 16)
+statusSide.Position = UDim2.new(0, 56, 0, 30)
+statusSide.BackgroundTransparency = 1
+statusSide.Text = "Status: Active ✨"
+statusSide.TextColor3 = Color3.fromRGB(100, 255, 100)
+statusSide.TextSize = 10
+statusSide.Font = Enum.Font.Gotham
+statusSide.TextXAlignment = Enum.TextXAlignment.Left
+statusSide.Parent = profileBox
+
+local menuList = Instance.new("Frame")
+menuList.Size = UDim2.new(1, -12, 0, 210)
+menuList.Position = UDim2.new(0, 6, 0, 78)
+menuList.BackgroundTransparency = 1
+menuList.Parent = sidebar
+
+local menuLayout = Instance.new("UIListLayout")
+menuLayout.SortOrder = Enum.SortOrder.LayoutOrder
+menuLayout.Padding = UDim.new(0, 4)
+menuLayout.Parent = menuList
+
+-- แผงแสดงเนื้อหา (Container)
+local containerFrame = Instance.new("Frame")
+containerFrame.Size = UDim2.new(1, -192, 1, -45)
+containerFrame.Position = UDim2.new(0, 184, 0, 40)
+containerFrame.BackgroundTransparency = 1
+containerFrame.Parent = mainWindow
+
+local function createTabPage()
+    local page = Instance.new("ScrollingFrame")
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.CanvasSize = UDim2.new(0, 0, 0, 1200) 
+    page.ScrollBarThickness = 3
+    page.Visible = false
+    page.Parent = containerFrame
+
+    local layout = Instance.new("UIListLayout")
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 6)
+    layout.Parent = page
+    return page
+end
+
+local pageMain = createTabPage()
+local pageESP = createTabPage()
+local pageTools = createTabPage()   
+local pageSettings = createTabPage()
+pageMain.Visible = true
+
+local function switchTab(targetPage)
+    pageMain.Visible = false
+    pageESP.Visible = false
+    pageTools.Visible = false
+    pageSettings.Visible = false
+    targetPage.Visible = true
+end
+
+local function createMenuButton(text, targetPage)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.BackgroundColor3 = Color3.fromRGB(28, 35, 48)
+    btn.Text = "  " .. text
+    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
+    btn.TextSize = 11
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    btn.Activated:Connect(function() switchTab(targetPage) end)
+    btn.Parent = menuList
+    return btn
+end
+
+createMenuButton("🏠  หน้าหลัก", pageMain)
+createMenuButton("👁️  ESP (มองทะลุ)", pageESP)
+createMenuButton("🛠️  เครื่องมือ", pageTools)
+createMenuButton("⚙️  ตั้งค่า", pageSettings)
+
+-- ฟังก์ชันสร้างปุ่มสคริปต์ทั่วไป
+local colorToggle = false
+local function createFeatureRow(parentPage, titleTextStr)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(0, 330, 0, 40)
+    row.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
+    row.Parent = parentPage
+
+    local rowCorner = Instance.new("UICorner")
+    rowCorner.CornerRadius = UDim.new(0, 6)
+    rowCorner.Parent = row
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -110, 1, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = titleTextStr
+    label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    label.TextSize = 11
+    label.Font = Enum.Font.GothamSemibold
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = row
+
+    local actionBtn = Instance.new("TextButton")
+    actionBtn.Size = UDim2.new(0, 90, 0, 26)
+    actionBtn.Position = UDim2.new(1, -96, 0.5, -13)
+    
+    colorToggle = not colorToggle
+    if colorToggle then
+        actionBtn.BackgroundColor3 = Color3.fromRGB(220, 40, 60)
+    else
+        actionBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 220)
+    end
+
+    actionBtn.Text = "เปิด"
+    actionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    actionBtn.TextSize = 11
+    actionBtn.Font = Enum.Font.GothamBold
+    actionBtn.Parent = row
+
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 5)
+    btnCorner.Parent = actionBtn
+    return actionBtn
+end
+
+-- ฟังก์ชันสร้างปุ่มเปิด-ปิด (Toggle)
+local function createToggleRow(parentPage, titleTextStr)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(0, 330, 0, 40)
+    row.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
+    row.Parent = parentPage
+
+    local rowCorner = Instance.new("UICorner")
+    rowCorner.CornerRadius = UDim.new(0, 6)
+    rowCorner.Parent = row
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -110, 1, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = titleTextStr
+    label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    label.TextSize = 11
+    label.Font = Enum.Font.GothamSemibold
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = row
+
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Size = UDim2.new(0, 90, 0, 26)
+    toggleBtn.Position = UDim2.new(1, -96, 0.5, -13)
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(220, 40, 60)
+    toggleBtn.Text = "ปิด"
+    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleBtn.TextSize = 11
+    toggleBtn.Font = Enum.Font.GothamBold
+    toggleBtn.Parent = row
+
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 5)
+    btnCorner.Parent = toggleBtn
+
+    local isActive = false
+    toggleBtn.Activated:Connect(function()
+        isActive = not isActive
+        if isActive then
+            toggleBtn.Text = "เปิด"
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+        else
+            toggleBtn.Text = "ปิด"
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(220, 40, 60)
+        end
+    end)
+
+    return toggleBtn, function() return isActive end
+end
+
+-- ==================== ฟังก์ชันภายในเกม ====================
+-- 1. Main (หน้าหลัก)
+local infJumpBtn, getInfJump = createToggleRow(pageMain, "☁️ กระโดดไม่จำกัด")
+UserInputService.JumpRequest:Connect(function()
+    if getInfJump() and player.Character then
+        local hum = player.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end
+end)
+
+local noclipBtn, getNoclip = createToggleRow(pageMain, "👻 เดินทะลุกำแพง")
+RunService.Stepped:Connect(function()
+    if getNoclip() and player.Character then
+        for _, part in ipairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then part.CanCollide = false end
+        end
+    end
+end)
+
+local speedBtn = createFeatureRow(pageMain, "⚡ สปีดและกระโดด")
+speedBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastebin.com/raw/rPsAFAcA"))() end)
+end)
+
+local flyBtn = createFeatureRow(pageMain, "🛸 บิน (Fly)")
+flyBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-VFly-gui-and-noclip-78112"))() end)
+end)
+
+local hugBtn = createFeatureRow(pageMain, "🫂 กอด")
+hugBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://encrypt-x.pages.dev/Scripts?Id=5996126186926"))("5996126186926") end)
+end)
+
+local feR6Btn = createFeatureRow(pageMain, "🤖 FE R6")
+feR6Btn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://rawscripts.net/raw/Brookhaven-RP-LOL-gui-v1-80287"))() end)
+end)
+
+local undressBtn = createFeatureRow(pageMain, "👕 ถอดเสื้อผ้า")
+undressBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://encrypt-x.pages.dev/Scripts?Id=8622144238702"))("8622144238702") end)
+end)
+
+-- ย้ายสคริปต์เสริมมาไว้หน้าหลัก พร้อมเปลี่ยนชื่อเป็น "กล้อง"
+local cameraBtn = createFeatureRow(pageMain, "📷 กล้อง")
+cameraBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastefy.app/dBqTFr19/raw", true))() end)
+end)
+
+-- 2. ESP (มองทะลุ)
+local espNameBtn, getEspName = createToggleRow(pageESP, "👁️ ESP ชื่อผู้เล่น")
+
+local function clearAllESP()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Character and p.Character:FindFirstChild("Head") then
+            local tag = p.Character.Head:FindFirstChild("NexoraTag")
+            if tag then tag:Destroy() end
+        end
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    if getEspName() then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
+                local head = p.Character.Head
+                if not head:FindFirstChild("NexoraTag") then
+                    local bgui = Instance.new("BillboardGui")
+                    bgui.Name = "NexoraTag"
+                    bgui.Size = UDim2.new(0, 200, 0, 50)
+                    bgui.AlwaysOnTop = true
+                    bgui.StudsOffset = Vector3.new(0, 2.5, 0)
+                    
+                    local txt = Instance.new("TextLabel", bgui)
+                    txt.Size = UDim2.new(1, 0, 1, 0)
+                    txt.BackgroundTransparency = 1
+                    txt.Text = p.Name
+                    txt.TextColor3 = Color3.fromRGB(0, 170, 255)
+                    txt.Font = Enum.Font.GothamBold
+                    txt.TextSize = 20
+                    txt.TextStrokeTransparency = 0
+                    txt.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+                    
+                    bgui.Parent = head
+                end
+            end
+        end
+    else
+        clearAllESP()
+    end
+end)
+
+local resetEspBtn = createFeatureRow(pageESP, "🔄 รีเซ็ตเห็นชื่อ")
+resetEspBtn.Text = "รีเซ็ต"
+resetEspBtn.Activated:Connect(function()
+    clearAllESP()
+end)
+
+local lockHeadBtn = createFeatureRow(pageESP, "🎯 ล็อกหัวค่ายNEXORA")
+lockHeadBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://lurvox-security.vercel.app/loader/script/koswGGxMarBvWqukzQZYH4r7YFgbJUBq"))() end)
+end)
+
+-- 3. Tools (เครื่องมือ)
+local saitamaBtn = createFeatureRow(pageTools, "🥊 ไซตามะ (Saitama)")
+saitamaBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastefy.app/pa9ok3yb/raw"))() end)
+end)
+
+local sonicBtn = createFeatureRow(pageTools, "🦔 โซนิกเพลง")
+sonicBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastefy.app/CEb6oAML/raw", true))() end)
+end)
+
+local timeStopBtn = createFeatureRow(pageTools, "⏸️ หยุดเวลา")
+timeStopBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastefy.app/rAFE34wv/raw"))() end)
+end)
+
+local gojoBtn = createFeatureRow(pageTools, "🌀 โกโจ-GoJo")
+gojoBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastefy.app/nz8UV553/raw"))() end)
+end)
+
+local gojoSkillBtn = createFeatureRow(pageTools, "⚡ GoJo สกิว")
+gojoSkillBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastebin.com/raw/EHW6uehz", true))() end)
+end)
+
+local sukunaBtn = createFeatureRow(pageTools, "👹 สุคุนะ-sukuna")
+sukunaBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastefy.app/MVFyuF8s/raw"))() end)
+end)
+
+local spidermanBtn = createFeatureRow(pageTools, "🕷️ สไปเดอร์แมน")
+spidermanBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastefy.app/GzKd8bDt/raw"))() end)
+end)
+
+local feR15Btn = createFeatureRow(pageTools, "👤 FE R15")
+feR15Btn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastefy.app/nXZ4BtzA/raw"))() end)
+end)
+
+local fakePingBtn = createFeatureRow(pageTools, "📶 ปิงปลอม")
+fakePingBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/GithubMagical/Roblox-Egor/refs/heads/main/lua%20v2", true))() end)
+end)
+
+local trollBtn = createFeatureRow(pageTools, "🤡 Troll")
+trollBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/9s2dyhcgwm-svg/Troll-phonk-meme/refs/heads/main/The%20Script"))() end)
+end)
+
+local sansBtn = createFeatureRow(pageTools, "💀 แซน")
+sansBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastefy.app/rLpLSwYW/raw", true))() end)
+end)
+
+-- 4. Settings (ตั้งค่า)
+local fpsBootBtn = createFeatureRow(pageSettings, "🚀 FPS Boot")
+fpsBootBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastefy.app/vYTnF234/raw", true))() end)
+end)
+
+local shaderBtn = createFeatureRow(pageSettings, "✨ เฉดเดอร์")
+shaderBtn.Activated:Connect(function()
+    pcall(function() loadstring(game:HttpGet("https://pastefy.app/wOmfg6M0/raw"))() end)
+end)
+
+local destroyBtn = createFeatureRow(pageSettings, "🗑️ ปิด UI ทั้งหมด")
+destroyBtn.Text = "ปิด UI"
+destroyBtn.Activated:Connect(function()
+    screenGui:Destroy()
+end)
+
+toggleButton.Activated:Connect(function()
+    mainWindow.Visible = not mainWindow.Visible
+end)
